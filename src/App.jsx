@@ -3,17 +3,21 @@ import { Garden } from './components/Garden';
 import { HabitList } from './components/HabitList';
 import { AiZenMaster } from './components/AiZenMaster';
 import { ThemeToggle } from './components/ThemeToggle';
-import { Fireflies } from './components/Fireflies';
+import { WeatherEffects } from './components/WeatherEffects';
+import { ZenFocusMode } from './components/ZenFocusMode';
+import { StreakHeatmap } from './components/StreakHeatmap';
+import { RareEncounter } from './components/RareEncounter';
 import { generateZenMessage } from './utils/aiMock';
 import { Leaf } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 
 function App() {
-  const { habits, addHabit, completeHabit, removeHabit, aiMessage, setAiMessage } = useHabits();
+  const { habits, addHabit, completeHabit, removeHabit, clearWeeds, aiMessage, setAiMessage } = useHabits();
   
   const [themeSetting, setThemeSetting] = useState('auto');
   const [activeTheme, setActiveTheme] = useState('day');
+  const [activeFocusHabit, setActiveFocusHabit] = useState(null);
 
   // Logic to determine time of day for auto theme
   useEffect(() => {
@@ -56,9 +60,10 @@ function App() {
 
   return (
     <>
-      <AnimatePresence>
-        {activeTheme === 'night' && <Fireflies />}
-      </AnimatePresence>
+      <WeatherEffects theme={activeTheme} />
+      <RareEncounter onCatch={() => {
+        setAiMessage("Kamu berhasil menangkap Kupu-Kupu Langka! Kesabaran dan fokusmu sungguh luar biasa hari ini. Teruslah bertumbuh! 🦋✨");
+      }} />
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem 1rem', position: 'relative', zIndex: 1 }}>
         <header className="header-container" style={{ marginBottom: '2.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div className="header-title-row">
@@ -104,7 +109,7 @@ function App() {
           className="glass-panel" 
           style={{ overflow: 'hidden' }}
         >
-          <Garden habits={habits} />
+          <Garden habits={habits} onClearWeeds={clearWeeds} />
         </motion.div>
 
         <motion.div
@@ -117,12 +122,24 @@ function App() {
             onAdd={addHabit} 
             onComplete={handleComplete} 
             onRemove={removeHabit}
+            onFocus={(habit) => setActiveFocusHabit(habit)}
           />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <StreakHeatmap habits={habits} />
         </motion.div>
       </main>
 
         <AiZenMaster message={aiMessage} onClose={() => setAiMessage(null)} />
       </div>
+      {activeFocusHabit && (
+        <ZenFocusMode habit={activeFocusHabit} onClose={() => setActiveFocusHabit(null)} />
+      )}
     </>
   );
 }

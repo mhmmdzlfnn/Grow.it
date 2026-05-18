@@ -1,8 +1,10 @@
-import { Plus, Check, Droplets, Trash2 } from 'lucide-react';
+import { Plus, Check, Droplets, Trash2, Headphones, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import confetti from 'canvas-confetti';
+import { playBloop, playSwoosh } from '../utils/soundfx';
 
-export const HabitList = ({ habits, onComplete, onAdd, onRemove }) => {
+export const HabitList = ({ habits, onComplete, onAdd, onRemove, onFocus }) => {
   const [newTitle, setNewTitle] = useState('');
   const [newType, setNewType] = useState('sakura');
   
@@ -36,17 +38,18 @@ export const HabitList = ({ habits, onComplete, onAdd, onRemove }) => {
               background: habit.isCompletedToday ? 'rgba(141, 163, 153, 0.1)' : '#fff',
               borderRadius: '12px',
               border: '1px solid',
-              borderColor: habit.isCompletedToday ? 'var(--accent-green)' : 'var(--border-color)',
+              borderColor: habit.hasWeeds ? '#e74c3c' : (habit.isCompletedToday ? 'var(--accent-green)' : 'var(--border-color)'),
               transition: 'all 0.3s ease'
             }}
           >
             <div>
               <div style={{ 
                 fontWeight: 500,
-                color: habit.isCompletedToday ? 'var(--text-secondary)' : 'var(--text-primary)',
+                color: habit.isCompletedToday ? 'var(--text-secondary)' : (habit.hasWeeds ? '#e74c3c' : 'var(--text-primary)'),
                 textDecoration: habit.isCompletedToday ? 'line-through' : 'none'
               }}>
                 {habit.title}
+                {habit.hasWeeds && <span style={{ fontSize: '0.75rem', marginLeft: '0.5rem', color: '#e74c3c', display: 'inline-flex', alignItems: 'center', gap: '2px' }}><AlertTriangle size={12}/> Bersihkan kebun!</span>}
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
                 Streak: {habit.history.length} hari
@@ -72,31 +75,78 @@ export const HabitList = ({ habits, onComplete, onAdd, onRemove }) => {
               >
                 <Trash2 size={18} />
               </button>
+              
               <button
-                onClick={() => onComplete(habit.id)}
+                onClick={() => { playSwoosh(); onFocus(habit); }}
+                style={{
+                  color: 'var(--text-secondary)',
+                  opacity: 0.8,
+                  transition: 'all 0.2s',
+                  padding: '6px 10px',
+                  display: 'flex',
+                  background: 'rgba(141, 163, 153, 0.1)',
+                  borderRadius: '12px',
+                  border: '1px solid transparent',
+                  cursor: 'pointer',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: 500
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--accent-green)'; e.currentTarget.style.color = 'var(--accent-green)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                title="Focus Mode"
+              >
+                <Headphones size={16} /> Focus
+              </button>
+
+              <button
+                onClick={(e) => {
+                  if (habit.hasWeeds) {
+                    alert("Cabut rumput dan singkirkan hama di tanamanmu dulu sebelum menyiramnya!");
+                    return;
+                  }
+                  playBloop();
+                  
+                  // Fire confetti relative to button position
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = (rect.left + rect.width / 2) / window.innerWidth;
+                  const y = (rect.top + rect.height / 2) / window.innerHeight;
+                  
+                  confetti({
+                    particleCount: 40,
+                    spread: 60,
+                    origin: { x, y },
+                    colors: ['#8DA399', '#C09A76', '#fff'],
+                    zIndex: 200
+                  });
+                  
+                  onComplete(habit.id);
+                }}
               disabled={habit.isCompletedToday}
               style={{
                 width: '36px',
                 height: '36px',
                 borderRadius: '50%',
-                background: habit.isCompletedToday ? 'var(--accent-green)' : 'transparent',
-                border: `2px solid ${habit.isCompletedToday ? 'var(--accent-green)' : 'var(--border-color)'}`,
+                background: habit.isCompletedToday ? 'var(--accent-green)' : (habit.hasWeeds ? '#fff0f0' : 'transparent'),
+                border: `2px solid ${habit.isCompletedToday ? 'var(--accent-green)' : (habit.hasWeeds ? '#e74c3c' : 'var(--border-color)')}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: habit.isCompletedToday ? 'default' : 'pointer',
-                color: '#fff',
+                color: habit.hasWeeds ? '#e74c3c' : '#fff',
                 transition: 'all 0.2s',
                 boxShadow: habit.isCompletedToday ? 'none' : 'var(--shadow-sm)'
               }}
               onMouseOver={(e) => {
-                if (!habit.isCompletedToday) e.currentTarget.style.borderColor = 'var(--accent-green)';
+                if (!habit.isCompletedToday && !habit.hasWeeds) e.currentTarget.style.borderColor = 'var(--accent-green)';
               }}
               onMouseOut={(e) => {
-                if (!habit.isCompletedToday) e.currentTarget.style.borderColor = 'var(--border-color)';
+                if (!habit.isCompletedToday && !habit.hasWeeds) e.currentTarget.style.borderColor = 'var(--border-color)';
               }}
             >
               {habit.isCompletedToday && <Check size={18} strokeWidth={3} />}
+              {habit.hasWeeds && !habit.isCompletedToday && <AlertTriangle size={18} strokeWidth={2} />}
             </button>
             </div>
           </motion.div>

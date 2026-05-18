@@ -55,6 +55,12 @@ export const useHabits = () => {
     setHabits(habits.filter(habit => habit.id !== id));
   };
 
+  const clearWeeds = (id) => {
+    setHabits(habits.map(habit => 
+      habit.id === id ? { ...habit, lastWeedsCleared: getToday() } : habit
+    ));
+  };
+
   // Helper to calculate current state of a habit
   const getHabitState = (habit) => {
     const today = getToday();
@@ -66,6 +72,7 @@ export const useHabits = () => {
 
     // Wilted logic: if not completed yesterday or today (and history is not empty)
     let isWilted = false;
+    let hasWeeds = false;
     if (completions > 0) {
       const yesterdayDate = new Date();
       yesterdayDate.setDate(yesterdayDate.getDate() - 1);
@@ -73,13 +80,16 @@ export const useHabits = () => {
 
       if (!habit.history.includes(today) && !habit.history.includes(yesterday)) {
         isWilted = true;
+        if (habit.lastWeedsCleared !== today) {
+          hasWeeds = true;
+        }
       }
     }
 
-    return { ...habit, isCompletedToday, stage, isWilted };
+    return { ...habit, isCompletedToday, stage, isWilted, hasWeeds };
   };
 
   const enhancedHabits = habits.map(getHabitState);
 
-  return { habits: enhancedHabits, addHabit, completeHabit, removeHabit, aiMessage, setAiMessage };
+  return { habits: enhancedHabits, addHabit, completeHabit, removeHabit, clearWeeds, aiMessage, setAiMessage };
 };
