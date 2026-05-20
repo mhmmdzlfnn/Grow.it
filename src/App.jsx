@@ -1,4 +1,5 @@
 import { useHabits } from './hooks/useHabits';
+import { useReminders } from './hooks/useReminders';
 import { Garden } from './components/Garden';
 import { HabitList } from './components/HabitList';
 import { AiZenMaster } from './components/AiZenMaster';
@@ -7,17 +8,24 @@ import { WeatherEffects } from './components/WeatherEffects';
 import { ZenFocusMode } from './components/ZenFocusMode';
 import { StreakHeatmap } from './components/StreakHeatmap';
 import { RareEncounter } from './components/RareEncounter';
+import { StreakCelebration } from './components/StreakCelebration';
+import { GardenShareCard } from './components/GardenShareCard';
+import { ReminderModal } from './components/ReminderModal';
 import { generateZenMessage } from './utils/aiMock';
-import { Leaf } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Leaf, Share2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 
 function App() {
   const { habits, addHabit, completeHabit, removeHabit, clearWeeds, aiMessage, setAiMessage } = useHabits();
-  
+  const { reminders, permission, requestPermission, setReminder, removeReminder } = useReminders(habits);
+
   const [themeSetting, setThemeSetting] = useState('auto');
   const [activeTheme, setActiveTheme] = useState('day');
   const [activeFocusHabit, setActiveFocusHabit] = useState(null);
+  const [streakCelebration, setStreakCelebration] = useState(null);
+  const [showShareCard, setShowShareCard] = useState(false);
+  const [reminderHabit, setReminderHabit] = useState(null); // habit being edited
 
   // Logic to determine time of day for auto theme
   useEffect(() => {
@@ -44,17 +52,25 @@ function App() {
   }, [themeSetting]);
 
   const handleComplete = async (id) => {
-    const { justLeveledUp, completedTitle } = completeHabit(id);
-    
-    // Trigger AI message if leveled up or sometimes randomly (for demo purposes)
-    if (justLeveledUp || Math.random() > 0.5) {
-      const message = await generateZenMessage(completedTitle);
+    const { justLeveledUp, completedTitle, newStreak } = completeHabit(id);
+
+    // Show TikTok-style streak celebration on milestones
+    if (newStreak > 0) {
+      setStreakCelebration({ streak: newStreak, habitTitle: completedTitle });
+    }
+
+    // Pass context to Gemini for more personal responses
+    const habit = habits.find(h => h.id === id);
+    const aiContext = {
+      streak: newStreak,
+      stage: habit?.stage ?? 0,
+      justLeveledUp,
+    };
+
+    if (justLeveledUp || Math.random() > 0.4) {
+      const message = await generateZenMessage(completedTitle, aiContext);
       setAiMessage(message);
-      
-      // Auto close message after 8 seconds
-      setTimeout(() => {
-        setAiMessage(null);
-      }, 8000);
+      setTimeout(() => setAiMessage(null), 9000);
     }
   };
 
@@ -95,7 +111,24 @@ function App() {
                 </p>
               </div>
             </div>
-            <div style={{ marginLeft: 'auto' }}>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowShareCard(true)}
+                title="Bagikan Tamanmu"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.4rem',
+                  padding: '0.5rem 0.9rem', borderRadius: '12px',
+                  background: 'rgba(141,163,153,0.15)',
+                  border: '1px solid rgba(141,163,153,0.3)',
+                  color: 'var(--accent-green)', fontWeight: 600,
+                  fontSize: '0.82rem', cursor: 'pointer',
+                }}
+              >
+                <Share2 size={15} />
+                Share
+              </motion.button>
               <ThemeToggle theme={themeSetting} setTheme={setThemeSetting} />
             </div>
           </div>
@@ -123,6 +156,8 @@ function App() {
             onComplete={handleComplete} 
             onRemove={removeHabit}
             onFocus={(habit) => setActiveFocusHabit(habit)}
+            onSetReminder={(habit) => setReminderHabit(habit)}
+            reminders={reminders}
           />
         </motion.div>
 
@@ -139,6 +174,25 @@ function App() {
       </div>
       {activeFocusHabit && (
         <ZenFocusMode habit={activeFocusHabit} onClose={() => setActiveFocusHabit(null)} />
+      )}
+      <StreakCelebration
+        streak={streakCelebration?.streak}
+        habitTitle={streakCelebration?.habitTitle}
+        onDone={() => setStreakCelebration(null)}
+      />
+      {showShareCard && (
+        <GardenShareCard habits={habits} onClose={() => setShowShareCard(false)} />
+      )}
+      {reminderHabit && (
+        <ReminderModal
+          habit={reminderHabit}
+          reminder={reminders[reminderHabit.id]}
+          permission={permission}
+          onRequestPermission={requestPermission}
+          onSave={setReminder}
+          onRemove={removeReminder}
+          onClose={() => setReminderHabit(null)}
+        />
       )}
     </>
   );

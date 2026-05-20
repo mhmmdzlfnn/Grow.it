@@ -1,10 +1,10 @@
-import { Plus, Check, Droplets, Trash2, Headphones, AlertTriangle } from 'lucide-react';
+import { Plus, Check, Droplets, Trash2, Headphones, AlertTriangle, Flame, Bell, BellOff } from 'lucide-react';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { playBloop, playSwoosh } from '../utils/soundfx';
 
-export const HabitList = ({ habits, onComplete, onAdd, onRemove, onFocus }) => {
+export const HabitList = ({ habits, onComplete, onAdd, onRemove, onFocus, onSetReminder, reminders }) => {
   const [newTitle, setNewTitle] = useState('');
   const [newType, setNewType] = useState('sakura');
   
@@ -51,8 +51,30 @@ export const HabitList = ({ habits, onComplete, onAdd, onRemove, onFocus }) => {
                 {habit.title}
                 {habit.hasWeeds && <span style={{ fontSize: '0.75rem', marginLeft: '0.5rem', color: '#e74c3c', display: 'inline-flex', alignItems: 'center', gap: '2px' }}><AlertTriangle size={12}/> Bersihkan kebun!</span>}
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                Streak: {habit.history.length} hari
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span>{habit.history.length} hari total</span>
+                {habit.consecutiveStreak > 0 && (
+                  <motion.span
+                    key={habit.consecutiveStreak}
+                    initial={{ scale: 1.4, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '2px',
+                      fontWeight: 600,
+                      color: habit.consecutiveStreak >= 7
+                        ? '#e67e22'
+                        : habit.consecutiveStreak >= 3
+                        ? '#e67e22'
+                        : 'var(--text-secondary)',
+                      fontSize: habit.consecutiveStreak >= 7 ? '0.85rem' : '0.75rem',
+                    }}
+                  >
+                    {habit.consecutiveStreak >= 7 ? '🔥' : habit.consecutiveStreak >= 3 ? '🔥' : '·'}
+                    {habit.consecutiveStreak} hari berturut-turut
+                  </motion.span>
+                )}
               </div>
             </div>
             
@@ -99,6 +121,47 @@ export const HabitList = ({ habits, onComplete, onAdd, onRemove, onFocus }) => {
               >
                 <Headphones size={16} /> Focus
               </button>
+
+              {/* Reminder bell button */}
+              {onSetReminder && (
+                <button
+                  onClick={() => onSetReminder(habit)}
+                  style={{
+                    color: reminders?.[habit.id]?.enabled ? '#e67e22' : 'var(--text-secondary)',
+                    opacity: reminders?.[habit.id]?.enabled ? 1 : 0.5,
+                    transition: 'all 0.2s',
+                    padding: '6px',
+                    display: 'flex',
+                    background: reminders?.[habit.id]?.enabled ? 'rgba(230,126,34,0.1)' : 'none',
+                    borderRadius: '10px',
+                    border: reminders?.[habit.id]?.enabled ? '1px solid rgba(230,126,34,0.3)' : '1px solid transparent',
+                    cursor: 'pointer',
+                    alignItems: 'center',
+                    position: 'relative',
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.opacity = 1; e.currentTarget.style.color = '#e67e22'; }}
+                  onMouseOut={(e) => {
+                    if (!reminders?.[habit.id]?.enabled) {
+                      e.currentTarget.style.opacity = 0.5;
+                      e.currentTarget.style.color = 'var(--text-secondary)';
+                    }
+                  }}
+                  title={reminders?.[habit.id]?.enabled ? `Pengingat: ${reminders[habit.id].time}` : 'Set Pengingat'}
+                >
+                  {reminders?.[habit.id]?.enabled
+                    ? <Bell size={16} />
+                    : <BellOff size={16} />
+                  }
+                  {reminders?.[habit.id]?.enabled && (
+                    <span style={{
+                      position: 'absolute', top: '-4px', right: '-4px',
+                      width: '8px', height: '8px', borderRadius: '50%',
+                      background: '#e67e22',
+                      border: '1.5px solid var(--card-bg, #fff)',
+                    }} />
+                  )}
+                </button>
+              )}
 
               <button
                 onClick={(e) => {

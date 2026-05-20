@@ -1,0 +1,20 @@
+{
+  "name": "Grow.it — Taman Kebiasaan",
+  "short_name": "Grow.it",
+  "description": "Tumbuhkan kebiasaan baik dengan penuh kesabaran.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1f0f",
+  "theme_color": "#8DA399",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["lifestyle", "productivity"],
+  "lang": "id"
+}
