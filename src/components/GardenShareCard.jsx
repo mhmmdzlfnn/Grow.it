@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Download, Share2, Camera } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
@@ -96,8 +96,8 @@ const ShareCardCanvas = ({ habits, cardRef }) => {
                 }}>
                   {habit.title}
                 </div>
-                {(habit.consecutiveStreak ?? 0) >= 3 && (
-                  <div style={{ fontSize:'0.6rem', color:'#ff8c42', fontWeight:700 }}>
+                {(habit.consecutiveStreak ?? 0) >= 1 && (
+                  <div style={{ fontSize:'0.6rem', color: (habit.consecutiveStreak ?? 0) >= 7 ? '#ff8c42' : (habit.consecutiveStreak ?? 0) >= 3 ? '#f0a500' : '#c8a060', fontWeight:700 }}>
                     🔥{habit.consecutiveStreak}
                   </div>
                 )}
@@ -164,6 +164,39 @@ export const GardenShareCard = ({ habits, onClose }) => {
   const cardRef = useRef(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewScale, setPreviewScale] = useState(1);
+  const [cardHeight, setCardHeight] = useState(500);
+
+  const CARD_WIDTH = 420;
+
+  // Measure the hidden card's real height after it renders
+  const hiddenCardRef = useCallback((node) => {
+    if (!node) return;
+    // Wait one frame for layout
+    requestAnimationFrame(() => {
+      setCardHeight(node.getBoundingClientRect().height);
+    });
+  }, []);
+
+  // useCallback ref — fires immediately when the element mounts
+  const previewWrapperRef = useCallback((node) => {
+    if (!node) return;
+    const measure = () => {
+      const available = node.getBoundingClientRect().width;
+      if (available > 0) setPreviewScale(available / CARD_WIDTH);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    node._roCleanup = () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      const node = document.querySelector('[data-preview-wrapper]');
+      node?._roCleanup?.();
+    };
+  }, []);
 
   const handleCapture = async () => {
     if (!cardRef.current) return;
@@ -222,6 +255,15 @@ export const GardenShareCard = ({ habits, onClose }) => {
           padding: '1rem',
         }}
       >
+        {/* Hidden off-screen card — this is what html2canvas screenshots (fixed 420px) */}
+        <div style={{ position: 'fixed', top: 0, left: '-9999px', zIndex: -1, pointerEvents: 'none' }}>
+          <ShareCardCanvas habits={habits} cardRef={cardRef} />
+        </div>
+        {/* Invisible clone just to measure card height */}
+        <div style={{ position: 'fixed', top: 0, left: '-9999px', zIndex: -1, pointerEvents: 'none', visibility: 'hidden' }}>
+          <ShareCardCanvas habits={habits} cardRef={hiddenCardRef} />
+        </div>
+
         <motion.div
           initial={{ scale: 0.85, opacity: 0, y: 40 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -255,13 +297,31 @@ export const GardenShareCard = ({ habits, onClose }) => {
             Garden Share Card
           </h3>
 
-          {/* Card preview */}
-          <div style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '1.2rem', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+          {/* Card preview — responsive, fills modal width */}
+          <div
+            ref={previewWrapperRef}
+            data-preview-wrapper
+            style={{ marginBottom: '1.2rem', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', borderRadius: '16px', overflow: 'hidden' }}
+          >
             {previewUrl ? (
               <img src={previewUrl} alt="Garden card preview" style={{ width: '100%', display: 'block', borderRadius: '16px' }} />
             ) : (
-              <div style={{ transform: 'scale(0.95)', transformOrigin: 'top center' }}>
-                <ShareCardCanvas habits={habits} cardRef={cardRef} />
+              <div style={{
+                width: '100%',
+                height: `${Math.round(previewScale * cardHeight)}px`,
+                overflow: 'hidden',
+                borderRadius: '16px',
+                position: 'relative',
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  top: 0, left: 0,
+                  transformOrigin: 'top left',
+                  transform: `scale(${previewScale})`,
+                  width: `${CARD_WIDTH}px`,
+                }}>
+                  <ShareCardCanvas habits={habits} cardRef={{ current: null }} />
+                </div>
               </div>
             )}
           </div>

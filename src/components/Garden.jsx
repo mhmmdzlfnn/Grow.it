@@ -125,7 +125,7 @@ const PlantCard = ({ habit, onClearWeeds }) => {
         }}>
           {habit.hasWeeds ? 'Bersihkan!' : habit.title}
         </div>
-        {habit.consecutiveStreak >= 3 && !habit.hasWeeds && (
+        {habit.consecutiveStreak >= 1 && !habit.hasWeeds && (
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -134,7 +134,7 @@ const PlantCard = ({ habit, onClearWeeds }) => {
               marginTop: '4px',
               fontSize: '0.7rem',
               fontWeight: 700,
-              color: habit.consecutiveStreak >= 7 ? '#e67e22' : '#c0a060',
+              color: habit.consecutiveStreak >= 7 ? '#e67e22' : habit.consecutiveStreak >= 3 ? '#f0a500' : '#c8a060',
               display: 'flex',
               alignItems: 'center',
               gap: '2px'

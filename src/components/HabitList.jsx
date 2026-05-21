@@ -66,13 +66,12 @@ export const HabitList = ({ habits, onComplete, onAdd, onRemove, onFocus, onSetR
                       color: habit.consecutiveStreak >= 7
                         ? '#e67e22'
                         : habit.consecutiveStreak >= 3
-                        ? '#e67e22'
-                        : 'var(--text-secondary)',
+                        ? '#f0a500'
+                        : '#c8a060',
                       fontSize: habit.consecutiveStreak >= 7 ? '0.85rem' : '0.75rem',
                     }}
                   >
-                    {habit.consecutiveStreak >= 7 ? '🔥' : habit.consecutiveStreak >= 3 ? '🔥' : '·'}
-                    {habit.consecutiveStreak} hari berturut-turut
+                    🔥 {habit.consecutiveStreak} hari berturut-turut
                   </motion.span>
                 )}
               </div>
