@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { playBloop, playSwoosh } from '../utils/soundfx';
 
-export const HabitList = ({ habits, onComplete, onAdd, onRemove, onFocus, onSetReminder, reminders }) => {
+export const HabitList = ({ habits, onComplete, onAdd, onRemove, onFocus, onSetReminder, reminders, wateringHabitId }) => {
   const [newTitle, setNewTitle] = useState('');
   const [newType, setNewType] = useState('sakura');
   
@@ -35,7 +35,7 @@ export const HabitList = ({ habits, onComplete, onAdd, onRemove, onFocus, onSetR
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '1rem',
-              background: habit.isCompletedToday ? 'rgba(141, 163, 153, 0.1)' : '#fff',
+              background: habit.isCompletedToday ? 'rgba(141, 163, 153, 0.1)' : 'var(--card-bg)',
               borderRadius: '12px',
               border: '1px solid',
               borderColor: habit.hasWeeds ? '#e74c3c' : (habit.isCompletedToday ? 'var(--accent-green)' : 'var(--border-color)'),
@@ -53,7 +53,7 @@ export const HabitList = ({ habits, onComplete, onAdd, onRemove, onFocus, onSetR
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span>{habit.history.length} hari total</span>
-                {habit.consecutiveStreak > 0 && (
+                {habit.consecutiveStreak >= 3 && (
                   <motion.span
                     key={habit.consecutiveStreak}
                     initial={{ scale: 1.4, opacity: 0 }}
@@ -168,47 +168,56 @@ export const HabitList = ({ habits, onComplete, onAdd, onRemove, onFocus, onSetR
                     alert("Cabut rumput dan singkirkan hama di tanamanmu dulu sebelum menyiramnya!");
                     return;
                   }
-                  playBloop();
-                  
-                  // Fire confetti relative to button position
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = (rect.left + rect.width / 2) / window.innerWidth;
-                  const y = (rect.top + rect.height / 2) / window.innerHeight;
-                  
-                  confetti({
-                    particleCount: 40,
-                    spread: 60,
-                    origin: { x, y },
-                    colors: ['#8DA399', '#C09A76', '#fff'],
-                    zIndex: 200
-                  });
-                  
                   onComplete(habit.id);
                 }}
-              disabled={habit.isCompletedToday}
+              disabled={habit.isCompletedToday || wateringHabitId === habit.id}
               style={{
                 width: '36px',
                 height: '36px',
                 borderRadius: '50%',
-                background: habit.isCompletedToday ? 'var(--accent-green)' : (habit.hasWeeds ? '#fff0f0' : 'transparent'),
-                border: `2px solid ${habit.isCompletedToday ? 'var(--accent-green)' : (habit.hasWeeds ? '#e74c3c' : 'var(--border-color)')}`,
+                background: habit.isCompletedToday 
+                  ? 'var(--accent-green)' 
+                  : (wateringHabitId === habit.id 
+                    ? 'rgba(141, 163, 153, 0.15)' 
+                    : (habit.hasWeeds ? '#fff0f0' : 'transparent')),
+                border: `2px solid ${habit.isCompletedToday 
+                  ? 'var(--accent-green)' 
+                  : (wateringHabitId === habit.id 
+                    ? 'var(--accent-green)' 
+                    : (habit.hasWeeds ? '#e74c3c' : 'var(--border-color)'))}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: habit.isCompletedToday ? 'default' : 'pointer',
+                cursor: (habit.isCompletedToday || wateringHabitId === habit.id) ? 'default' : 'pointer',
                 color: habit.hasWeeds ? '#e74c3c' : '#fff',
                 transition: 'all 0.2s',
                 boxShadow: habit.isCompletedToday ? 'none' : 'var(--shadow-sm)'
               }}
               onMouseOver={(e) => {
-                if (!habit.isCompletedToday && !habit.hasWeeds) e.currentTarget.style.borderColor = 'var(--accent-green)';
+                if (!habit.isCompletedToday && !habit.hasWeeds && wateringHabitId !== habit.id) {
+                  e.currentTarget.style.borderColor = 'var(--accent-green)';
+                }
               }}
               onMouseOut={(e) => {
-                if (!habit.isCompletedToday && !habit.hasWeeds) e.currentTarget.style.borderColor = 'var(--border-color)';
+                if (!habit.isCompletedToday && !habit.hasWeeds && wateringHabitId !== habit.id) {
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                }
               }}
             >
               {habit.isCompletedToday && <Check size={18} strokeWidth={3} />}
-              {habit.hasWeeds && !habit.isCompletedToday && <AlertTriangle size={18} strokeWidth={2} />}
+              {wateringHabitId === habit.id && (
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Droplets size={16} color="var(--accent-green)" fill="var(--accent-green)" />
+                </motion.div>
+              )}
+              {habit.hasWeeds && !habit.isCompletedToday && wateringHabitId !== habit.id && <AlertTriangle size={18} strokeWidth={2} />}
+              {!habit.isCompletedToday && !habit.hasWeeds && wateringHabitId !== habit.id && (
+                <Droplets size={16} strokeWidth={2.5} color="var(--accent-green)" />
+              )}
             </button>
             </div>
           </motion.div>
@@ -220,7 +229,7 @@ export const HabitList = ({ habits, onComplete, onAdd, onRemove, onFocus, onSetR
         )}
       </div>
 
-      <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '1.5rem', background: 'rgba(255,255,255,0.4)', padding: '1rem', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+      <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '1.5rem', background: 'var(--card-bg)', padding: '1rem', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginBottom: '0.5rem' }}>
           {[
             { id: 'sakura', icon: '🌸', label: 'Sakura' },
@@ -260,7 +269,8 @@ export const HabitList = ({ habits, onComplete, onAdd, onRemove, onFocus, onSetR
             padding: '0.8rem 1rem',
             borderRadius: '12px',
             border: '1px solid var(--border-color)',
-            background: 'rgba(255, 255, 255, 0.5)',
+            background: 'var(--bg-color)',
+            color: 'var(--text-primary)',
             outline: 'none',
             fontSize: '0.95rem'
           }}

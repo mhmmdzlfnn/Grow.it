@@ -96,8 +96,8 @@ const ShareCardCanvas = ({ habits, cardRef }) => {
                 }}>
                   {habit.title}
                 </div>
-                {(habit.consecutiveStreak ?? 0) >= 1 && (
-                  <div style={{ fontSize:'0.6rem', color: (habit.consecutiveStreak ?? 0) >= 7 ? '#ff8c42' : (habit.consecutiveStreak ?? 0) >= 3 ? '#f0a500' : '#c8a060', fontWeight:700 }}>
+                {(habit.consecutiveStreak ?? 0) >= 3 && (
+                  <div style={{ fontSize:'0.6rem', color: (habit.consecutiveStreak ?? 0) >= 7 ? '#ff8c42' : '#f0a500', fontWeight:700 }}>
                     🔥{habit.consecutiveStreak}
                   </div>
                 )}

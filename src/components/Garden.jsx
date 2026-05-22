@@ -1,7 +1,16 @@
 import { Plant } from './Plant';
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from 'framer-motion';
+import { useRef, useState, useEffect } from 'react';
+import confetti from 'canvas-confetti';
+import { startWateringSound, stopWateringSound, playBloop } from '../utils/soundfx';
 
-const PlantCard = ({ habit, onClearWeeds }) => {
+const PlantCard = ({ habit, onClearWeeds, wateringHabitId, onWateringComplete, onWateringStateChange }) => {
+  const cardRef = useRef(null);
+  const isTarget = wateringHabitId === habit.id;
+  const [wateringProgress, setWateringProgress] = useState(0);
+  const [isWateringActive, setIsWateringActive] = useState(false);
+  const [droplets, setDroplets] = useState([]);
+
   const x = useMotionValue(0);
   const y = useMotionValue(0);
 
@@ -12,6 +21,7 @@ const PlantCard = ({ habit, onClearWeeds }) => {
   const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-15deg", "15deg"]);
 
   const handleMouseMove = (e) => {
+    if (isTarget) return; // Disable parallax during watering mode
     const rect = e.currentTarget.getBoundingClientRect();
     const width = rect.width;
     const height = rect.height;
@@ -26,13 +36,107 @@ const PlantCard = ({ habit, onClearWeeds }) => {
   const handleMouseLeave = () => {
     x.set(0);
     y.set(0);
+    if (isTarget) {
+      setIsWateringActive(false);
+    }
   };
+
+  const handlePointerEnter = () => {
+    if (isTarget) {
+      setIsWateringActive(true);
+    }
+  };
+
+  const handlePointerDown = (e) => {
+    if (isTarget) {
+      // Direct click/tap support
+      setIsWateringActive(true);
+    }
+  };
+
+  // Water droplets generation
+  useEffect(() => {
+    if (!isWateringActive) {
+      setDroplets([]);
+      return;
+    }
+    const interval = setInterval(() => {
+      setDroplets(prev => [
+        ...prev.slice(-12),
+        { id: Math.random(), x: Math.random() * 20 - 10 }
+      ]);
+    }, 60);
+    return () => clearInterval(interval);
+  }, [isWateringActive]);
+
+  // Watering progress & sound physics
+  useEffect(() => {
+    let interval = null;
+    if (isWateringActive && wateringProgress < 100) {
+      startWateringSound();
+      if (cardRef.current) {
+        onWateringStateChange(true, cardRef.current.getBoundingClientRect());
+      }
+      interval = setInterval(() => {
+        setWateringProgress(prev => {
+          const next = prev + 2.5; // ~1.2s to fully water
+          if (next >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return next;
+        });
+      }, 30);
+    } else {
+      stopWateringSound();
+      if (isTarget) {
+        onWateringStateChange(false, null);
+      }
+      // Slowly dry up if watering is interrupted
+      if (wateringProgress > 0 && wateringProgress < 100) {
+        interval = setInterval(() => {
+          setWateringProgress(prev => Math.max(0, prev - 4));
+        }, 45);
+      }
+    }
+    return () => clearInterval(interval);
+  }, [isWateringActive, isTarget, wateringProgress]);
+
+  // Handle completion trigger
+  useEffect(() => {
+    if (wateringProgress >= 100) {
+      playBloop();
+      
+      if (cardRef.current) {
+        const rect = cardRef.current.getBoundingClientRect();
+        const xCoord = (rect.left + rect.width / 2) / window.innerWidth;
+        const yCoord = (rect.top + rect.height / 2) / window.innerHeight;
+        
+        confetti({
+          particleCount: 50,
+          spread: 80,
+          origin: { x: xCoord, y: yCoord },
+          colors: ['#8DA399', '#C09A76', '#fff', '#8ec5fc'],
+          zIndex: 1000
+        });
+      }
+      
+      stopWateringSound();
+      onWateringStateChange(false, null);
+      setIsWateringActive(false);
+      onWateringComplete(habit.id);
+      setWateringProgress(0);
+    }
+  }, [wateringProgress]);
 
   return (
     <motion.div 
+      ref={cardRef}
       layout
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
+      onPointerEnter={handlePointerEnter}
+      onPointerDown={handlePointerDown}
       style={{ 
         display: 'flex', 
         flexDirection: 'column', 
@@ -48,18 +152,87 @@ const PlantCard = ({ habit, onClearWeeds }) => {
           rotateX,
           rotateY,
           transformStyle: "preserve-3d",
-          cursor: "pointer",
-          padding: "1rem",
+          cursor: isTarget ? "none" : "pointer",
+          padding: "1.2rem",
           display: 'flex', 
           flexDirection: 'column', 
           alignItems: 'center',
-          background: 'rgba(255,255,255,0.02)',
+          background: isTarget ? 'rgba(141, 163, 153, 0.1)' : 'rgba(255,255,255,0.02)',
           borderRadius: '20px',
+          border: isTarget ? '2px dashed var(--accent-green)' : '2px solid transparent',
+          boxShadow: isTarget ? '0 0 15px rgba(141, 163, 153, 0.3)' : 'none',
+          transition: 'background-color 0.3s, border-color 0.3s, box-shadow 0.3s'
         }}
-        whileHover={{ scale: 1.05 }}
+        whileHover={{ scale: isTarget ? 1.02 : 1.05 }}
       >
         <div style={{ transform: "translateZ(30px)", position: 'relative' }}>
-          <Plant stage={habit.stage} isWilted={habit.isWilted} type={habit.type} />
+          <Plant 
+            stage={habit.stage} 
+            isWilted={habit.isWilted} 
+            type={habit.type} 
+            isWet={habit.isCompletedToday}
+            wateringProgress={wateringProgress}
+          />
+          
+          {/* Water droplets particles */}
+          <AnimatePresence>
+            {isWateringActive && (
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
+                {droplets.map(drop => (
+                  <motion.div
+                    key={drop.id}
+                    initial={{ x: 35 + drop.x, y: -25, opacity: 0.8, scale: 0.8 }}
+                    animate={{ x: -10 + drop.x, y: 70, opacity: 0, scale: 0.4 }}
+                    transition={{ duration: 0.5, ease: 'easeIn' }}
+                    style={{
+                      position: 'absolute',
+                      width: '5px',
+                      height: '8px',
+                      background: '#8ec5fc',
+                      borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* Circular Progress Ring */}
+          {wateringProgress > 0 && (
+            <svg 
+              width="120" 
+              height="120" 
+              style={{ 
+                position: 'absolute', 
+                top: '0px', 
+                left: '50%', 
+                transform: 'translateX(-50%) rotate(-90deg)', 
+                pointerEvents: 'none', 
+                zIndex: 1 
+              }}
+            >
+              <circle
+                cx="60"
+                cy="60"
+                r="50"
+                stroke="rgba(141, 163, 153, 0.15)"
+                strokeWidth="4"
+                fill="transparent"
+              />
+              <motion.circle
+                cx="60"
+                cy="60"
+                r="50"
+                stroke="var(--accent-green)"
+                strokeWidth="4"
+                fill="transparent"
+                strokeDasharray={2 * Math.PI * 50}
+                strokeDashoffset={2 * Math.PI * 50 * (1 - wateringProgress / 100)}
+                strokeLinecap="round"
+                transition={{ ease: 'easeOut', duration: 0.05 }}
+              />
+            </svg>
+          )}
           
           <AnimatePresence>
             {habit.hasWeeds && (
@@ -123,9 +296,9 @@ const PlantCard = ({ habit, onClearWeeds }) => {
           marginTop: '1rem',
           color: habit.hasWeeds ? '#e74c3c' : 'inherit'
         }}>
-          {habit.hasWeeds ? 'Bersihkan!' : habit.title}
+          {habit.hasWeeds ? 'Bersihkan!' : (isTarget ? 'Siram Aku! 💧' : habit.title)}
         </div>
-        {habit.consecutiveStreak >= 1 && !habit.hasWeeds && (
+        {habit.consecutiveStreak >= 3 && !habit.hasWeeds && (
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -134,7 +307,7 @@ const PlantCard = ({ habit, onClearWeeds }) => {
               marginTop: '4px',
               fontSize: '0.7rem',
               fontWeight: 700,
-              color: habit.consecutiveStreak >= 7 ? '#e67e22' : habit.consecutiveStreak >= 3 ? '#f0a500' : '#c8a060',
+              color: habit.consecutiveStreak >= 7 ? '#e67e22' : '#f0a500',
               display: 'flex',
               alignItems: 'center',
               gap: '2px'
@@ -148,7 +321,7 @@ const PlantCard = ({ habit, onClearWeeds }) => {
   );
 };
 
-export const Garden = ({ habits, onClearWeeds }) => {
+export const Garden = ({ habits, onClearWeeds, wateringHabitId, onWateringComplete, onWateringStateChange }) => {
   if (habits.length === 0) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px', flexDirection: 'column', color: 'var(--text-secondary)' }}>
@@ -175,7 +348,14 @@ export const Garden = ({ habits, onClearWeeds }) => {
       minHeight: '300px'
     }}>
       {habits.map((habit) => (
-        <PlantCard key={habit.id} habit={habit} onClearWeeds={onClearWeeds} />
+        <PlantCard 
+          key={habit.id} 
+          habit={habit} 
+          onClearWeeds={onClearWeeds} 
+          wateringHabitId={wateringHabitId}
+          onWateringComplete={onWateringComplete}
+          onWateringStateChange={onWateringStateChange}
+        />
       ))}
     </div>
   );

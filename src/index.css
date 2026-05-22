@@ -109,3 +109,16 @@ input::placeholder {
     padding: 0.8rem !important;
   }
 }
+
+/* Custom Cursor styles for watering mode */
+.watering-mode-active {
+  cursor: none !important;
+}
+
+.watering-mode-active button,
+.watering-mode-active input,
+.watering-mode-active a,
+.watering-mode-active div,
+.watering-mode-active svg {
+  cursor: none !important;
+}

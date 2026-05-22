@@ -11,9 +11,12 @@ import { RareEncounter } from './components/RareEncounter';
 import { StreakCelebration } from './components/StreakCelebration';
 import { GardenShareCard } from './components/GardenShareCard';
 import { ReminderModal } from './components/ReminderModal';
-import { generateZenMessage } from './utils/aiMock';
+import { MoodCheck } from './components/MoodCheck';
+import { WateringCanCursor } from './components/WateringCanCursor';
+import { generateZenMessage, generateMoodResponse } from './utils/aiMock';
+import { playSwoosh } from './utils/soundfx';
 import { Leaf, Share2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 
 function App() {
@@ -25,7 +28,13 @@ function App() {
   const [activeFocusHabit, setActiveFocusHabit] = useState(null);
   const [streakCelebration, setStreakCelebration] = useState(null);
   const [showShareCard, setShowShareCard] = useState(false);
-  const [reminderHabit, setReminderHabit] = useState(null); // habit being edited
+  const [reminderHabit, setReminderHabit] = useState(null);
+  const [moodCheck, setMoodCheck] = useState(null); // { habitTitle, habitId, context } // habit being edited
+
+  // Watering Interactive States
+  const [wateringHabitId, setWateringHabitId] = useState(null);
+  const [wateringTargetRect, setWateringTargetRect] = useState(null);
+  const [isWateringTilting, setIsWateringTilting] = useState(false);
 
   // Logic to determine time of day for auto theme
   useEffect(() => {
@@ -51,26 +60,77 @@ function App() {
     return () => clearInterval(interval);
   }, [themeSetting]);
 
+  const handleStartWatering = (id) => {
+    const habit = habits.find(h => h.id === id);
+    if (!habit) return;
+    if (habit.isCompletedToday) return;
+
+    if (habit.hasWeeds) {
+      setAiMessage("Cabut rumput dan singkirkan hama di tanamanmu dulu sebelum menyiramnya! 🌿🐛");
+      setTimeout(() => setAiMessage(null), 5000);
+      return;
+    }
+
+    setWateringHabitId(id);
+    playSwoosh();
+
+    // Scroll to garden smoothly
+    setTimeout(() => {
+      const gardenEl = document.getElementById('garden-section');
+      if (gardenEl) {
+        gardenEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  };
+
   const handleComplete = async (id) => {
+    // Ambil title dulu dari habits sebelum completeHabit dipanggil
+    const habit = habits.find(h => h.id === id);
+    const habitTitle = habit?.title ?? '';
+
     const { justLeveledUp, completedTitle, newStreak } = completeHabit(id);
 
     // Show TikTok-style streak celebration on milestones
     if (newStreak > 0) {
-      setStreakCelebration({ streak: newStreak, habitTitle: completedTitle });
+      setStreakCelebration({ streak: newStreak, habitTitle });
     }
 
-    // Pass context to Gemini for more personal responses
-    const habit = habits.find(h => h.id === id);
-    const aiContext = {
-      streak: newStreak,
-      stage: habit?.stage ?? 0,
-      justLeveledUp,
-    };
+    // Show mood check after completing a habit
+    setMoodCheck({
+      habitTitle,
+      context: { streak: newStreak, stage: habit?.stage ?? 0, justLeveledUp },
+    });
+  };
 
-    if (justLeveledUp || Math.random() > 0.4) {
-      const message = await generateZenMessage(completedTitle, aiContext);
-      setAiMessage(message);
-      setTimeout(() => setAiMessage(null), 9000);
+  const handleMoodSelect = async (mood) => {
+    setMoodCheck(null);
+    const { habitTitle, context } = moodCheck;
+
+    // Generate mood-aware Gemini response
+    const message = await generateMoodResponse(mood.value, mood.label, habitTitle);
+    setAiMessage(message);
+    setTimeout(() => setAiMessage(null), 10000);
+
+    // Also trigger zen message on level up (separate from mood response)
+    if (context.justLeveledUp) {
+      setTimeout(async () => {
+        const zenMsg = await generateZenMessage(habitTitle, context);
+        setAiMessage(zenMsg);
+        setTimeout(() => setAiMessage(null), 9000);
+      }, 11000);
+    }
+  };
+
+  const handleMoodSkip = () => {
+    const { habitTitle, context } = moodCheck ?? {};
+    setMoodCheck(null);
+
+    // Fall back to regular zen message if skipped
+    if (context?.justLeveledUp || Math.random() > 0.4) {
+      generateZenMessage(habitTitle, context ?? {}).then(msg => {
+        setAiMessage(msg);
+        setTimeout(() => setAiMessage(null), 9000);
+      });
     }
   };
 
@@ -141,8 +201,23 @@ function App() {
           transition={{ duration: 0.5 }}
           className="glass-panel" 
           style={{ overflow: 'hidden' }}
+          id="garden-section"
         >
-          <Garden habits={habits} onClearWeeds={clearWeeds} />
+          <Garden 
+            habits={habits} 
+            onClearWeeds={clearWeeds} 
+            wateringHabitId={wateringHabitId}
+            onWateringComplete={(id) => {
+              setWateringHabitId(null);
+              setIsWateringTilting(false);
+              setWateringTargetRect(null);
+              handleComplete(id);
+            }}
+            onWateringStateChange={(isTilting, rect) => {
+              setIsWateringTilting(isTilting);
+              setWateringTargetRect(rect);
+            }}
+          />
         </motion.div>
 
         <motion.div
@@ -153,11 +228,12 @@ function App() {
           <HabitList 
             habits={habits} 
             onAdd={addHabit} 
-            onComplete={handleComplete} 
+            onComplete={handleStartWatering} 
             onRemove={removeHabit}
             onFocus={(habit) => setActiveFocusHabit(habit)}
             onSetReminder={(habit) => setReminderHabit(habit)}
             reminders={reminders}
+            wateringHabitId={wateringHabitId}
           />
         </motion.div>
 
@@ -194,6 +270,68 @@ function App() {
           onClose={() => setReminderHabit(null)}
         />
       )}
+      {moodCheck && (
+        <MoodCheck
+          habitTitle={moodCheck.habitTitle}
+          onSelect={handleMoodSelect}
+          onSkip={handleMoodSkip}
+        />
+      )}
+
+      {/* Floating Instructions for Watering Mode */}
+      <AnimatePresence>
+        {wateringHabitId && (
+          <motion.div
+            initial={{ y: 80, x: '-50%', opacity: 0 }}
+            animate={{ y: 0, x: '-50%', opacity: 1 }}
+            exit={{ y: 80, x: '-50%', opacity: 0 }}
+            style={{
+              position: 'fixed',
+              bottom: '2rem',
+              left: '50%',
+              background: 'var(--card-bg)',
+              backdropFilter: 'blur(15px)',
+              border: '1px solid var(--border-color)',
+              padding: '0.8rem 1.5rem',
+              borderRadius: '30px',
+              boxShadow: 'var(--shadow-md)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+              zIndex: 999
+            }}
+          >
+            <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 500 }}>
+              💧 Arahkan penyiram atau ketuk tanaman <strong>{habits.find(h => h.id === wateringHabitId)?.title}</strong> untuk menyiramnya!
+            </span>
+            <button
+              onClick={() => {
+                setWateringHabitId(null);
+                setIsWateringTilting(false);
+                setWateringTargetRect(null);
+              }}
+              style={{
+                background: 'rgba(231, 76, 60, 0.1)',
+                color: '#e74c3c',
+                border: 'none',
+                padding: '4px 12px',
+                borderRadius: '20px',
+                fontWeight: 600,
+                fontSize: '0.8rem',
+                cursor: 'pointer'
+              }}
+            >
+              Batal
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <WateringCanCursor
+        active={wateringHabitId !== null}
+        isTilting={isWateringTilting}
+        targetRect={wateringTargetRect}
+      />
     </>
   );
 }

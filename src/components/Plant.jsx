@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 
-export const Plant = ({ stage, isWilted, type = 'sakura' }) => {
+export const Plant = ({ stage, isWilted, type = 'sakura', isWet = false, wateringProgress = 0 }) => {
   const getPlantVisual = () => {
     if (type === 'bambu') {
       switch (stage) {
@@ -40,6 +40,11 @@ export const Plant = ({ stage, isWilted, type = 'sakura' }) => {
     3: '5.5rem'
   };
 
+  const activeWet = isWet || wateringProgress > 0;
+  const currentOpacity = isWet 
+    ? 0.85 
+    : (wateringProgress > 0 ? 0.2 + (wateringProgress / 100) * 0.65 : 0.2);
+
   return (
     <motion.div
       initial={{ scale: 0, opacity: 0 }}
@@ -59,16 +64,19 @@ export const Plant = ({ stage, isWilted, type = 'sakura' }) => {
         position: 'relative'
       }}
     >
-      {/* Soil base */}
+      {/* Soil base with physics transitions */}
       <div style={{
         position: 'absolute',
         bottom: 0,
         width: '60px',
         height: '15px',
-        background: 'var(--text-secondary)',
+        background: activeWet ? '#4E342E' : 'var(--text-secondary)',
+        border: activeWet ? '1px solid #3E2723' : '1px solid transparent',
+        boxShadow: activeWet ? '0 0 8px rgba(78, 52, 46, 0.4)' : 'none',
         borderRadius: '50%',
-        opacity: 0.2,
-        zIndex: -1
+        opacity: currentOpacity,
+        zIndex: -1,
+        transition: 'background-color 0.4s ease, border-color 0.4s ease, opacity 0.4s ease, box-shadow 0.4s ease'
       }}></div>
 
       <motion.div
