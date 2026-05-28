@@ -132,3 +132,89 @@ export const stopWateringSound = () => {
   }
   wateringAudioNodes = null;
 };
+
+export const playChime = () => {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();
+
+  const now = ctx.currentTime;
+  
+  // Bright bell chime notes (harmonic intervals)
+  const freqs = [659.25, 987.77, 1318.51, 1975.53]; 
+  const gains = [0.12, 0.06, 0.04, 0.02];
+  const decay = 1.2;
+
+  freqs.forEach((f, idx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(f, now);
+    
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(gains[idx], now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + decay);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start(now);
+    osc.stop(now + decay);
+  });
+};
+
+export const playShutter = () => {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();
+
+  const now = ctx.currentTime;
+
+  // 1. Shutter Click (burst of highpass filtered noise)
+  const clickBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate);
+  const clickData = clickBuffer.getChannelData(0);
+  for (let i = 0; i < clickData.length; i++) {
+    clickData[i] = Math.random() * 2 - 1;
+  }
+  const clickSource = ctx.createBufferSource();
+  clickSource.buffer = clickBuffer;
+
+  const clickFilter = ctx.createBiquadFilter();
+  clickFilter.type = 'highpass';
+  clickFilter.frequency.setValueAtTime(3000, now);
+
+  const clickGain = ctx.createGain();
+  clickGain.gain.setValueAtTime(0.25, now);
+  clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+  clickSource.connect(clickFilter);
+  clickFilter.connect(clickGain);
+  clickGain.connect(ctx.destination);
+  clickSource.start(now);
+
+  // 2. Polaroid Motor "bzzzt" (short delay after click)
+  const motorStart = now + 0.08;
+  const motorDuration = 0.45;
+  
+  const osc = ctx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(85, motorStart);
+  
+  const lowpass = ctx.createBiquadFilter();
+  lowpass.type = 'lowpass';
+  lowpass.frequency.setValueAtTime(250, motorStart);
+
+  const motorGain = ctx.createGain();
+  motorGain.gain.setValueAtTime(0, now);
+  motorGain.gain.setValueAtTime(0, motorStart);
+  motorGain.gain.linearRampToValueAtTime(0.06, motorStart + 0.05);
+  motorGain.gain.exponentialRampToValueAtTime(0.001, motorStart + motorDuration);
+
+  osc.connect(lowpass);
+  lowpass.connect(motorGain);
+  motorGain.connect(ctx.destination);
+
+  osc.start(motorStart);
+  osc.stop(motorStart + motorDuration);
+};

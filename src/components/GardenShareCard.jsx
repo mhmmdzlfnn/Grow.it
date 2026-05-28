@@ -2,6 +2,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Download, Share2, Camera } from 'lucide-react';
 import html2canvas from 'html2canvas';
+import { generatePolaroidPoem } from '../utils/aiMock';
+import { playShutter } from '../utils/soundfx';
 
 // Standalone plant renderer (no animation — html2canvas can't capture CSS animations)
 const StaticPlant = ({ type, stage, isWilted }) => {
@@ -21,7 +23,7 @@ const StaticPlant = ({ type, stage, isWilted }) => {
 };
 
 // The actual card that gets screenshotted
-const ShareCardCanvas = ({ habits, cardRef }) => {
+const ShareCardCanvas = ({ habits, cardRef, poem, isGeneratingPoem }) => {
   const today = new Date();
   const dateStr = today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -134,17 +136,36 @@ const ShareCardCanvas = ({ habits, cardRef }) => {
         ))}
       </div>
 
-      {/* Quote */}
+      {/* Poem/Quote Area */}
       <div style={{
-        background:'rgba(141,163,153,0.1)',
+        background:'rgba(255,255,255,0.03)',
         borderRadius:'12px',
-        padding:'12px 16px',
-        borderLeft:'3px solid rgba(141,163,153,0.5)',
+        padding:'16px',
+        border:'1px solid rgba(255,255,255,0.06)',
         marginBottom:'20px',
+        minHeight:'80px',
+        display:'flex',
+        alignItems:'center',
+        justifyContent:'center',
       }}>
-        <p style={{ fontSize:'0.78rem', fontStyle:'italic', color:'rgba(255,255,255,0.65)', margin:0, lineHeight:1.6 }}>
-          "Pohon besar berawal dari satu biji kecil. Teruslah bertumbuh, satu hari dalam satu waktu."
-        </p>
+        {isGeneratingPoem ? (
+          <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.5)', fontStyle:'italic' }}>
+            Memproses aura taman...
+          </div>
+        ) : (
+          <p style={{ 
+            fontSize:'0.85rem', 
+            fontStyle:'italic', 
+            color:'rgba(255,255,255,0.85)', 
+            margin:0, 
+            lineHeight:1.7,
+            textAlign:'center',
+            fontFamily: "'Georgia', serif",
+            whiteSpace: 'pre-line'
+          }}>
+            "{poem}"
+          </p>
+        )}
       </div>
 
       {/* Footer */}
@@ -166,8 +187,22 @@ export const GardenShareCard = ({ habits, onClose }) => {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [previewScale, setPreviewScale] = useState(1);
   const [cardHeight, setCardHeight] = useState(500);
+  
+  const [poem, setPoem] = useState('');
+  const [isGeneratingPoem, setIsGeneratingPoem] = useState(true);
+  const [showFlash, setShowFlash] = useState(true);
 
   const CARD_WIDTH = 420;
+
+  useEffect(() => {
+    playShutter();
+    generatePolaroidPoem(habits).then(text => {
+      setPoem(text);
+      setIsGeneratingPoem(false);
+    });
+    
+    setTimeout(() => setShowFlash(false), 800);
+  }, [habits]);
 
   // Measure the hidden card's real height after it renders
   const hiddenCardRef = useCallback((node) => {
@@ -255,13 +290,29 @@ export const GardenShareCard = ({ habits, onClose }) => {
           padding: '1rem',
         }}
       >
+        {/* Camera Flash Overlay */}
+        <AnimatePresence>
+          {showFlash && (
+            <motion.div
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 999,
+                background: '#fff', pointerEvents: 'none'
+              }}
+            />
+          )}
+        </AnimatePresence>
+
         {/* Hidden off-screen card — this is what html2canvas screenshots (fixed 420px) */}
         <div style={{ position: 'fixed', top: 0, left: '-9999px', zIndex: -1, pointerEvents: 'none' }}>
-          <ShareCardCanvas habits={habits} cardRef={cardRef} />
+          <ShareCardCanvas habits={habits} cardRef={cardRef} poem={poem} isGeneratingPoem={isGeneratingPoem} />
         </div>
         {/* Invisible clone just to measure card height */}
         <div style={{ position: 'fixed', top: 0, left: '-9999px', zIndex: -1, pointerEvents: 'none', visibility: 'hidden' }}>
-          <ShareCardCanvas habits={habits} cardRef={hiddenCardRef} />
+          <ShareCardCanvas habits={habits} cardRef={hiddenCardRef} poem={poem} isGeneratingPoem={isGeneratingPoem} />
         </div>
 
         <motion.div
@@ -320,7 +371,7 @@ export const GardenShareCard = ({ habits, onClose }) => {
                   transform: `scale(${previewScale})`,
                   width: `${CARD_WIDTH}px`,
                 }}>
-                  <ShareCardCanvas habits={habits} cardRef={{ current: null }} />
+                  <ShareCardCanvas habits={habits} cardRef={{ current: null }} poem={poem} isGeneratingPoem={isGeneratingPoem} />
                 </div>
               </div>
             )}

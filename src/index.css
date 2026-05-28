@@ -81,6 +81,13 @@ input::placeholder {
   transition: background-color 1.5s ease, border-color 1.5s ease, box-shadow 1.5s ease;
 }
 
+.header-title-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 /* Responsiveness Utilities */
 @media (max-width: 600px) {
   .header-container {
@@ -89,10 +96,16 @@ input::placeholder {
     gap: 1rem !important;
   }
   .header-title-row {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: flex-start;
+    gap: 1.4rem;
+  }
+  .header-title-row > div:last-child {
+    margin-left: 0 !important;
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.8rem;
   }
   .type-selector-btn {
     font-size: 1.2rem !important;
@@ -122,3 +135,82 @@ input::placeholder {
 .watering-mode-active svg {
   cursor: none !important;
 }
+
+/* Wisdom Cards Styling */
+.wisdom-card-deck {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: center;
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+.wisdom-card-back {
+  width: 135px;
+  height: 200px;
+  background: linear-gradient(135deg, var(--card-bg) 0%, rgba(255,255,255,0.02) 100%);
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.wisdom-card-back:hover {
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 12px 24px rgba(192, 154, 118, 0.15);
+}
+
+.wisdom-card-inner-border {
+  position: absolute;
+  width: 88%;
+  height: 92%;
+  border: 1px dashed var(--border-color);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+}
+
+.wisdom-card-inner-border .card-sparkle {
+  font-size: 2rem;
+  opacity: 0.75;
+}
+
+.wisdom-card-inner-border .card-label {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 500px) {
+  .wisdom-card-deck {
+    gap: 0.5rem;
+  }
+  .wisdom-card-back {
+    width: 95px;
+    height: 145px;
+    border-radius: 12px;
+  }
+  .wisdom-card-inner-border {
+    gap: 0.4rem;
+  }
+  .wisdom-card-inner-border .card-sparkle {
+    font-size: 1.5rem;
+  }
+  .wisdom-card-inner-border .card-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.5px;
+  }
+}
+

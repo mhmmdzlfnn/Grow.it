@@ -144,3 +144,237 @@ Berikan respons yang:
     return getMoodFallback(moodValue);
   }
 };
+
+const WISDOM_FALLBACKS = {
+  Bumi: [
+    {
+      wisdom: "Akar yang dalam tidak takut pada badai. Teruslah berpijak kuat pada kebiasaan baikmu.",
+      prompt: "Keberhasilan kecil apa yang berhasil kamu bangun hari ini?"
+    },
+    {
+      wisdom: "Gunung tidak pernah goyah oleh tiupan angin. Percayalah pada fondasi kokoh yang sedang kamu susun.",
+      prompt: "Bagaimana kamu bisa merasa lebih membumi dan tenang hari ini?"
+    },
+    {
+      wisdom: "Bumi membutuhkan waktu untuk mengubah benih menjadi pohon raksasa. Sabarlah dengan proses pertumbuhannmu.",
+      prompt: "Hal apa dalam hidupmu yang membutuhkan lebih banyak kesabaran saat ini?"
+    },
+    {
+      wisdom: "Setiap tanah yang subur berawal dari bebatuan yang sabar terkikis waktu. Ketekunanmu tidak sia-sia.",
+      prompt: "Sebutkan satu kebiasaan kecil yang paling membuatmu merasa stabil."
+    }
+  ],
+  Air: [
+    {
+      wisdom: "Jadilah seperti air yang mengalir perlahan melewati rintangan tanpa pernah kehilangan jati dirinya.",
+      prompt: "Kekhawatiran apa yang ingin kamu biarkan mengalir pergi hari ini?"
+    },
+    {
+      wisdom: "Air yang tenang mampu memantulkan cahaya bintang dengan sempurna. Tenangkan batinmu untuk melihat jalan ke depan.",
+      prompt: "Kapan terakhir kali kamu meluangkan waktu untuk benar-benar beristirahat?"
+    },
+    {
+      wisdom: "Sungai selalu menemukan jalan menuju samudera luas. Begitu pula impianmu akan menemukan jalannya.",
+      prompt: "Adakah hal yang sedang kamu paksakan saat ini? Bagaimana jika kamu biarkan mengalir?"
+    },
+    {
+      wisdom: "Hujan yang lembut memberikan kehidupan bagi hutan yang kering. Berikan dirimu kelembutan yang sama hari ini.",
+      prompt: "Bagaimana cara terbaikmu memulihkan energi setelah hari yang melelahkan?"
+    }
+  ],
+  Angin: [
+    {
+      wisdom: "Lepaskan beban yang tak perlu kamu bawa. Biarkan harimu mengalir ringan seperti hembusan angin pagi.",
+      prompt: "Pikiran atau ekspektasi berat apa yang ingin kamu lepaskan hari ini?"
+    },
+    {
+      wisdom: "Angin membawa benih-benih baru ke tempat yang tak terduga. Terbukalah pada setiap perubahan hidup.",
+      prompt: "Hal baru menarik apa yang kamu pelajari atau alami akhir-akhir ini?"
+    },
+    {
+      wisdom: "Tarik napas sedalam langit, hembuskan perlahan. Biarkan setiap keraguan terbang bersama angin.",
+      prompt: "Ambil jeda sejenak untuk bernapas dalam-dalam. Apa yang kamu rasakan sekarang?"
+    },
+    {
+      wisdom: "Angin sepoi-sepoi mampu menyejukkan hari yang terik. Jadilah pembawa ketenangan bagi orang di sekitarmu.",
+      prompt: "Siapa orang yang ingin kamu beri apresiasi atau sapa dengan hangat hari ini?"
+    }
+  ],
+  Api: [
+    {
+      wisdom: "Nyalakan api semangat dalam dirimu, namun biarkan ia menghangatkan langkahmu, bukan membakar energimu.",
+      prompt: "Tujuan atau impian apa yang paling membuat jiwamu bersemangat saat ini?"
+    },
+    {
+      wisdom: "Kegelapan malam tidak akan pernah bisa mengalahkan cahaya dari sebatang lilin kecil yang menyala.",
+      prompt: "Tindakan kecil apa yang bisa kamu lakukan hari ini untuk menyalakan kembali semangatmu?"
+    },
+    {
+      wisdom: "Api membutuhkan kayu bakar yang tepat untuk terus menyala. Berikan dirimu nutrisi dan istirahat yang cukup.",
+      prompt: "Apa yang biasanya menjadi 'kayu bakar' atau sumber motivasi terbesarmu?"
+    },
+    {
+      wisdom: "Emas dimurnikan lewat api yang panas. Tantangan yang kamu hadapi hari ini sedang membentuk kekuatanmu.",
+      prompt: "Pelajaran berharga apa yang kamu dapatkan dari kesulitan terakhirmu?"
+    }
+  ],
+  Emas: [
+    {
+      wisdom: "Setiap tindakan disiplin hari ini adalah butiran emas berharga yang kamu tabung untuk masa depan.",
+      prompt: "Hal berharga apa yang paling kamu syukuri dari dirimu hari ini?"
+    },
+    {
+      wisdom: "Kemilau emas sejati tidak akan pernah pudar oleh lumpur. Nilai dirimu tidak ditentukan oleh kegagalan sesaat.",
+      prompt: "Apa pencapaian terbaikmu minggu ini yang ingin kamu rayakan?"
+    },
+    {
+      wisdom: "Menghargai waktu adalah cara kita mengumpulkan emas kehidupan yang sesungguhnya.",
+      prompt: "Bagaimana kamu bisa menggunakan waktumu dengan lebih bijaksana besok?"
+    },
+    {
+      wisdom: "Kebaikan kecil yang kamu bagikan kepada sesama adalah emas yang paling terang bersinar.",
+      prompt: "Kebaikan apa yang telah kamu lakukan atau terima hari ini?"
+    }
+  ]
+};
+
+const getWisdomFallback = (element) => {
+  const list = WISDOM_FALLBACKS[element] || WISDOM_FALLBACKS['Bumi'];
+  return list[Math.floor(Math.random() * list.length)];
+};
+
+export const generateWisdomCard = async (cardElement, habits = []) => {
+  if (!ai) {
+    await new Promise(r => setTimeout(r, 800));
+    return getWisdomFallback(cardElement);
+  }
+
+  const habitsList = habits.map(h => h.title).join(', ');
+  const prompt = `Kamu adalah AI Zen Master dalam aplikasi habit tracker bernama Grow.it.
+Pengguna baru saja menarik kartu harian dengan elemen: "${cardElement}".
+Kebiasaan aktif pengguna saat ini: [${habitsList}].
+
+Tugasmu:
+1. Berikan pesan kebijaksanaan Zen yang inspiratif dan puitis berdasarkan elemen "${cardElement}" dan kaitkan secara halus dengan perkembangan diri, ketekunan, atau pertumbuhan kebiasaan.
+2. Berikan satu pertanyaan refleksi diri (journaling prompt) yang hangat agar pengguna dapat merenung dan menulis jurnal mereka hari ini.
+
+Keluarkan respon dalam format JSON yang valid seperti ini (DAN HANYA JSON INI, TANPA markdown block \`\`\`json atau teks lain):
+{
+  "wisdom": "pesan kebijaksanaan di sini (maksimal 2 kalimat, bahasa Indonesia, tanpa emoji, tanpa tanda kutip)",
+  "prompt": "pertanyaan refleksi/journaling di sini (1 kalimat tanya, bahasa Indonesia, hangat dan bersahabat)"
+}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+    const text = response.text?.trim();
+    if (!text) return getWisdomFallback(cardElement);
+    
+    // Clean any markdown formatting just in case
+    const cleanText = text.replace(/```json\s*|```/g, '').trim();
+    return JSON.parse(cleanText);
+  } catch (err) {
+    console.warn('Gemini wisdom card error, using fallback:', err.message);
+    return getWisdomFallback(cardElement);
+  }
+};
+
+const POLAROID_FALLBACKS = [
+  "Tunas merambat,\nMembelah tanah keras,\nMekar perlahan.",
+  "Setetes air,\nMenghidupkan asa,\nTaman bersemi.",
+  "Waktu berlalu,\nDaun berguguran,\nAkar menguat.",
+  "Matahari pagi,\nMenyapa tunas muda,\nHarapan baru.",
+  "Angin berhembus,\nPohon menari riang,\nPanen tiba."
+];
+
+const getPolaroidFallback = () => {
+  return POLAROID_FALLBACKS[Math.floor(Math.random() * POLAROID_FALLBACKS.length)];
+};
+
+export const generatePolaroidPoem = async (habits = []) => {
+  if (!ai || habits.length === 0) {
+    await new Promise(r => setTimeout(r, 1200));
+    return getPolaroidFallback();
+  }
+
+  const habitsList = habits.map(h => h.title).join(', ');
+  const prompt = `Kamu adalah seorang penyair alam.
+Pengguna sedang membangun kebiasaan ini: [${habitsList}].
+Buatkan sebuah Haiku (puisi 3 baris: 5-7-5 suku kata, atau cukup 3 baris puitis pendek) dalam bahasa Indonesia yang terinspirasi dari kebiasaan-kebiasaan mereka, menggunakan metafora kebun dan alam (tanaman, air, matahari, akar).
+Jangan beri judul, jangan beri penjelasan, HANYA keluarkan 3 baris puisi tersebut.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: prompt,
+    });
+    const text = response.text?.trim();
+    if (!text) return getPolaroidFallback();
+    
+    return text.replace(/"/g, '');
+  } catch (err) {
+    console.warn('Gemini polaroid error, using fallback:', err.message);
+    return getPolaroidFallback();
+  }
+};
+
+const fallbackParseVoice = (transcript, habits) => {
+  const text = transcript.toLowerCase();
+  const match = habits.find(h => text.includes(h.title.toLowerCase()));
+  if (match) {
+    return {
+      action: 'complete',
+      habitId: match.id,
+      response: `Siap! Habit "${match.title}" sudah Mochi siram! 🌿`
+    };
+  }
+  return {
+    action: 'none',
+    habitId: null,
+    response: `Meow? Mochi kurang paham. Coba sebutkan nama habitnya ya! 🐾`
+  };
+};
+
+export const parseVoiceCommand = async (transcript, habits = []) => {
+  if (!ai || habits.length === 0) {
+    await new Promise(r => setTimeout(r, 800));
+    return fallbackParseVoice(transcript, habits);
+  }
+
+  const habitsData = habits.map(h => ({ id: h.id, title: h.title }));
+  const prompt = `Kamu adalah asisten kucing virtual bernama Mochi.
+Pengguna mengucapkan: "${transcript}".
+Daftar habit pengguna saat ini (ID dan Judul): ${JSON.stringify(habitsData)}
+
+Tugasmu:
+Apakah pengguna bermaksud meminta kamu mencentang/menyelesaikan/menyiram salah satu habit tersebut?
+Jika YA:
+Kembalikan JSON dengan "action": "complete", "habitId": (id habit yang dimaksud), dan "response": (kalimat lucu dari Mochi merespons sukses, maksimal 1 kalimat).
+Jika TIDAK atau TIDAK JELAS:
+Kembalikan JSON dengan "action": "none", "habitId": null, dan "response": (kalimat balasan lucu Mochi yang merespons sapaan atau kebingungan, maksimal 1 kalimat).
+
+HANYA KELUARKAN JSON SAJA TANPA MARKDOWN ATAU PENJELASAN.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+    const text = response.text?.trim();
+    if (!text) return fallbackParseVoice(transcript, habits);
+    
+    const cleanText = text.replace(/```json\s*|```/g, '').trim();
+    return JSON.parse(cleanText);
+  } catch (err) {
+    console.warn('Gemini voice parsing error:', err.message);
+    return fallbackParseVoice(transcript, habits);
+  }
+};

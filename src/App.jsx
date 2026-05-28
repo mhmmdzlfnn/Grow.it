@@ -1,5 +1,6 @@
 import { useHabits } from './hooks/useHabits';
 import { useReminders } from './hooks/useReminders';
+import { useWisdomCards } from './hooks/useWisdomCards';
 import { Garden } from './components/Garden';
 import { HabitList } from './components/HabitList';
 import { AiZenMaster } from './components/AiZenMaster';
@@ -13,23 +14,28 @@ import { GardenShareCard } from './components/GardenShareCard';
 import { ReminderModal } from './components/ReminderModal';
 import { MoodCheck } from './components/MoodCheck';
 import { WateringCanCursor } from './components/WateringCanCursor';
+import { WisdomCardModal } from './components/WisdomCardModal';
 import { generateZenMessage, generateMoodResponse } from './utils/aiMock';
-import { playSwoosh } from './utils/soundfx';
-import { Leaf, Share2 } from 'lucide-react';
+import { playSwoosh, playChime } from './utils/soundfx';
+import { Leaf, Share2, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
+
 
 function App() {
   const { habits, addHabit, completeHabit, removeHabit, clearWeeds, aiMessage, setAiMessage } = useHabits();
   const { reminders, permission, requestPermission, setReminder, removeReminder } = useReminders(habits);
+  const wisdomCardsState = useWisdomCards();
 
   const [themeSetting, setThemeSetting] = useState('auto');
   const [activeTheme, setActiveTheme] = useState('day');
   const [activeFocusHabit, setActiveFocusHabit] = useState(null);
   const [streakCelebration, setStreakCelebration] = useState(null);
   const [showShareCard, setShowShareCard] = useState(false);
+  const [showWisdomModal, setShowWisdomModal] = useState(false);
   const [reminderHabit, setReminderHabit] = useState(null);
   const [moodCheck, setMoodCheck] = useState(null); // { habitTitle, habitId, context } // habit being edited
+
 
   // Watering Interactive States
   const [wateringHabitId, setWateringHabitId] = useState(null);
@@ -89,6 +95,7 @@ function App() {
     const habitTitle = habit?.title ?? '';
 
     const { justLeveledUp, completedTitle, newStreak } = completeHabit(id);
+    playChime();
 
     // Show TikTok-style streak celebration on milestones
     if (newStreak > 0) {
@@ -171,7 +178,44 @@ function App() {
                 </p>
               </div>
             </div>
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowWisdomModal(true)}
+                title="Pesan Alam"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.4rem',
+                  padding: '0 1rem', height: '40px', borderRadius: '20px',
+                  background: 'rgba(192, 154, 118, 0.08)',
+                  border: '1px solid rgba(192, 154, 118, 0.2)',
+                  color: 'var(--accent-brown)', fontWeight: 600,
+                  fontSize: '0.85rem', cursor: 'pointer',
+                  position: 'relative',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+              >
+                <Sparkles size={15} />
+                Pesan Alam
+                
+                {/* Pulsing notification badge if card hasn't been drawn today */}
+                {!wisdomCardsState.hasDrawnToday && (
+                  <motion.span 
+                    animate={{ scale: [1, 1.3, 1] }}
+                    transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                    style={{
+                      position: 'absolute',
+                      top: '-3px',
+                      right: '-3px',
+                      width: '8px',
+                      height: '8px',
+                      background: '#e74c3c',
+                      borderRadius: '50%',
+                      boxShadow: '0 0 8px #e74c3c'
+                    }} 
+                  />
+                )}
+              </motion.button>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -179,11 +223,12 @@ function App() {
                 title="Bagikan Tamanmu"
                 style={{
                   display: 'flex', alignItems: 'center', gap: '0.4rem',
-                  padding: '0.5rem 0.9rem', borderRadius: '12px',
-                  background: 'rgba(141,163,153,0.15)',
-                  border: '1px solid rgba(141,163,153,0.3)',
+                  padding: '0 1rem', height: '40px', borderRadius: '20px',
+                  background: 'rgba(141,163,153,0.08)',
+                  border: '1px solid rgba(141,163,153,0.2)',
                   color: 'var(--accent-green)', fontWeight: 600,
-                  fontSize: '0.82rem', cursor: 'pointer',
+                  fontSize: '0.85rem', cursor: 'pointer',
+                  boxShadow: 'var(--shadow-sm)'
                 }}
               >
                 <Share2 size={15} />
@@ -326,6 +371,14 @@ function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {showWisdomModal && (
+        <WisdomCardModal
+          habits={habits}
+          wisdomCardsState={wisdomCardsState}
+          onClose={() => setShowWisdomModal(false)}
+        />
+      )}
 
       <WateringCanCursor
         active={wateringHabitId !== null}
